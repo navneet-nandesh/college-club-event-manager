@@ -18,7 +18,11 @@ public class Event {
     }
 
     public int seatsLeft() {
-        return Math.max(0, maxSeats - registeredCount);
+        int left = maxSeats - registeredCount;
+        if (left < 0) {
+            return 0;
+        }
+        return left;
     }
 
     public String getEventId() { return eventId; }

@@ -8,7 +8,9 @@ public class ExecomMember extends Person implements Authenticable {
         this.designation = designation;
     }
 
-    public String getDesignation() { return designation; }
+    public String getDesignation() {
+        return designation;
+    }
 
     @Override
     public void displayInfo() {
@@ -21,10 +23,5 @@ public class ExecomMember extends Person implements Authenticable {
             return true;
         }
         throw new InvalidLoginException("Incorrect email or password for " + this.name);
-    }
-
-    @Override
-    public boolean login() throws InvalidLoginException {
-        return true;
     }
 }

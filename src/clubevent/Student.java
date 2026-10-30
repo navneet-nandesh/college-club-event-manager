@@ -10,8 +10,13 @@ public class Student extends Person implements Authenticable {
         this.year = year;
     }
 
-    public String getDepartment() { return department; }
-    public int getYear() { return year; }
+    public String getDepartment() {
+        return department;
+    }
+
+    public int getYear() {
+        return year;
+    }
 
     @Override
     public void displayInfo() {
@@ -24,10 +29,5 @@ public class Student extends Person implements Authenticable {
             return true;
         }
         throw new InvalidLoginException("Incorrect email or password for " + this.name);
-    }
-
-    @Override
-    public boolean login() throws InvalidLoginException {
-        return true;
     }
 }
