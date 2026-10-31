@@ -1,3 +1,4 @@
+
 # College Club Event Manager (Java OOP + MySQL)
 
 A simplified, beginner-level College Club Event Management project consolidated into a single self-contained file: **`ClubEventManager.java`**. Strictly aligned with lecture presentation topics: **Layout Managers**, **Exception Handling**, **Event Handling (Delegation Event Model)**, and **Swing**.
