@@ -7,10 +7,6 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.table.*;
 
-// ============================================================================
-// 1. INTERFACES & CUSTOM EXCEPTIONS (PPT Exception Handling)
-// ============================================================================
-
 interface Authenticable {
     boolean login(String email, String password) throws InvalidLoginException;
 }
@@ -32,10 +28,6 @@ class AlreadyRegisteredException extends Exception {
         super(message);
     }
 }
-
-// ============================================================================
-// 2. DOMAIN MODEL CLASSES (PPT Inheritance & Encapsulation)
-// ============================================================================
 
 abstract class Person {
     protected String id;
@@ -139,10 +131,6 @@ class Event {
     public int getRegisteredCount() { return registeredCount; }
     public void setRegisteredCount(int count) { this.registeredCount = count; }
 }
-
-// ============================================================================
-// 3. DATABASE MANAGER (JDBC & Queries)
-// ============================================================================
 
 class DBManager {
     private static final String URL = "jdbc:mysql://localhost:3306/clubevent_db";
@@ -346,11 +334,6 @@ class DBManager {
     }
 }
 
-// ============================================================================
-// 4. GUI FRAMES (PPT Swing, Layout Managers, Delegation Event Model)
-// ============================================================================
-
-// --- 4.1 ROLE SELECTION / WELCOME FRAME ---
 class RoleSelectFrame extends JFrame implements ActionListener {
     private JButton studentBtn;
     private JButton execomBtn;
@@ -410,7 +393,6 @@ class RoleSelectFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.2 STUDENT LOGIN FRAME ---
 class StudentLoginFrame extends JFrame implements ActionListener {
     private JTextField emailField;
     private JPasswordField passField;
@@ -505,7 +487,6 @@ class StudentLoginFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.3 STUDENT REGISTRATION FRAME ---
 class StudentRegisterFrame extends JFrame implements ActionListener {
     private JTextField idField;
     private JTextField nameField;
@@ -629,7 +610,6 @@ class StudentRegisterFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.4 EXECOM LOGIN FRAME ---
 class ExecomLoginFrame extends JFrame implements ActionListener {
     private JTextField emailField;
     private JPasswordField passField;
@@ -724,7 +704,6 @@ class ExecomLoginFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.5 EXECOM REGISTRATION FRAME ---
 class ExecomRegisterFrame extends JFrame implements ActionListener {
     private JTextField idField;
     private JTextField nameField;
@@ -830,7 +809,6 @@ class ExecomRegisterFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.6 STUDENT MAIN PORTAL FRAME ---
 class StudentFrame extends JFrame implements ActionListener {
     private Student student;
     private JTable table;
@@ -940,7 +918,6 @@ class StudentFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.7 EXECOM MAIN PORTAL FRAME ---
 class ExecomFrame extends JFrame implements ActionListener {
     private ExecomMember member;
     private JTable table;
@@ -1107,7 +1084,6 @@ class ExecomFrame extends JFrame implements ActionListener {
     }
 }
 
-// --- 4.8 PARTICIPANTS FRAME ---
 class ParticipantsFrame extends JFrame implements ActionListener {
     private Event event;
     private JTable table;
@@ -1214,10 +1190,6 @@ class ParticipantsFrame extends JFrame implements ActionListener {
         }
     }
 }
-
-// ============================================================================
-// 5. MAIN ENTRY POINT
-// ============================================================================
 
 public class ClubEventManager {
     public static void main(String[] args) {
