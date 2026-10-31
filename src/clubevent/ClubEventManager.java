@@ -34,7 +34,7 @@ class AlreadyRegisteredException extends Exception {
 }
 
 // ============================================================================
-// 2. OOP MODELS (Inheritance: Person -> Student, ExecomMember)
+// 2. DOMAIN MODEL CLASSES (PPT Inheritance & Encapsulation)
 // ============================================================================
 
 abstract class Person {
@@ -141,7 +141,7 @@ class Event {
 }
 
 // ============================================================================
-// 3. DATABASE OPERATIONS (Simple JDBC)
+// 3. DATABASE MANAGER (JDBC & Queries)
 // ============================================================================
 
 class DBManager {
@@ -159,36 +159,46 @@ class DBManager {
         }
     }
 
-    public static Person login(String email, String password) throws InvalidLoginException {
+    public static Student loginStudent(String email, String password) throws InvalidLoginException {
         Connection con = getConnection();
         if (con == null) {
             throw new InvalidLoginException("Cannot connect to MySQL database.");
         }
         try {
-            // Check student table
-            PreparedStatement ps1 = con.prepareStatement("SELECT * FROM students WHERE email = ?");
-            ps1.setString(1, email);
-            ResultSet rs1 = ps1.executeQuery();
-            if (rs1.next()) {
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM students WHERE email = ?");
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
                 Student s = new Student(
-                    rs1.getString("id"), rs1.getString("name"),
-                    rs1.getString("email"), rs1.getString("password"),
-                    rs1.getString("department"), rs1.getInt("year")
+                    rs.getString("id"), rs.getString("name"),
+                    rs.getString("email"), rs.getString("password"),
+                    rs.getString("department"), rs.getInt("year")
                 );
                 s.login(email, password);
                 con.close();
                 return s;
             }
+            con.close();
+        } catch (SQLException e) {
+            throw new InvalidLoginException("Database error: " + e.getMessage());
+        }
+        throw new InvalidLoginException("No student found with email: " + email);
+    }
 
-            // Check execom_members table
-            PreparedStatement ps2 = con.prepareStatement("SELECT * FROM execom_members WHERE email = ?");
-            ps2.setString(1, email);
-            ResultSet rs2 = ps2.executeQuery();
-            if (rs2.next()) {
+    public static ExecomMember loginExecom(String email, String password) throws InvalidLoginException {
+        Connection con = getConnection();
+        if (con == null) {
+            throw new InvalidLoginException("Cannot connect to MySQL database.");
+        }
+        try {
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM execom_members WHERE email = ?");
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
                 ExecomMember em = new ExecomMember(
-                    rs2.getString("id"), rs2.getString("name"),
-                    rs2.getString("email"), rs2.getString("password"),
-                    rs2.getString("designation")
+                    rs.getString("id"), rs.getString("name"),
+                    rs.getString("email"), rs.getString("password"),
+                    rs.getString("designation")
                 );
                 em.login(email, password);
                 con.close();
@@ -198,7 +208,52 @@ class DBManager {
         } catch (SQLException e) {
             throw new InvalidLoginException("Database error: " + e.getMessage());
         }
-        throw new InvalidLoginException("No user found with email: " + email);
+        throw new InvalidLoginException("No execom member found with email: " + email);
+    }
+
+    public static void registerStudent(Student s) throws Exception {
+        Connection con = getConnection();
+        if (con == null) {
+            throw new Exception("Cannot connect to MySQL database.");
+        }
+        try {
+            PreparedStatement ps = con.prepareStatement("INSERT INTO students VALUES (?, ?, ?, ?, ?, ?)");
+            ps.setString(1, s.getId());
+            ps.setString(2, s.getName());
+            ps.setString(3, s.getEmail());
+            ps.setString(4, s.getPassword());
+            ps.setString(5, s.getDepartment());
+            ps.setInt(6, s.getYear());
+            ps.executeUpdate();
+            con.close();
+        } catch (SQLException e) {
+            if (e.getMessage().toLowerCase().contains("duplicate")) {
+                throw new Exception("Student ID or Email already exists!");
+            }
+            throw new Exception("Registration error: " + e.getMessage());
+        }
+    }
+
+    public static void registerExecomMember(ExecomMember em) throws Exception {
+        Connection con = getConnection();
+        if (con == null) {
+            throw new Exception("Cannot connect to MySQL database.");
+        }
+        try {
+            PreparedStatement ps = con.prepareStatement("INSERT INTO execom_members VALUES (?, ?, ?, ?, ?)");
+            ps.setString(1, em.getId());
+            ps.setString(2, em.getName());
+            ps.setString(3, em.getEmail());
+            ps.setString(4, em.getPassword());
+            ps.setString(5, em.getDesignation());
+            ps.executeUpdate();
+            con.close();
+        } catch (SQLException e) {
+            if (e.getMessage().toLowerCase().contains("duplicate")) {
+                throw new Exception("Member ID or Email already exists!");
+            }
+            throw new Exception("Registration error: " + e.getMessage());
+        }
     }
 
     public static ArrayList<Event> getAllEvents() {
@@ -292,18 +347,18 @@ class DBManager {
 }
 
 // ============================================================================
-// 4. GUI FRAMES (Swing + Layout Managers + Delegation Event Model)
+// 4. GUI FRAMES (PPT Swing, Layout Managers, Delegation Event Model)
 // ============================================================================
 
-class LoginFrame extends JFrame implements ActionListener {
-    private JTextField emailField;
-    private JPasswordField passField;
-    private JButton loginBtn;
+// --- 4.1 ROLE SELECTION / WELCOME FRAME ---
+class RoleSelectFrame extends JFrame implements ActionListener {
+    private JButton studentBtn;
+    private JButton execomBtn;
     private JButton exitBtn;
 
-    public LoginFrame() {
-        setTitle("College Club - Login");
-        setSize(320, 180);
+    public RoleSelectFrame() {
+        setTitle("College Club Event Manager");
+        setSize(380, 240);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -311,14 +366,77 @@ class LoginFrame extends JFrame implements ActionListener {
         cPane.setLayout(new BorderLayout(5, 5));
         cPane.setBackground(new Color(230, 240, 250));
 
-        // Top Title
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        titlePanel.setBackground(new Color(210, 230, 250));
-        titlePanel.add(new JLabel("Club Event Manager Login"));
+        titlePanel.setBackground(new Color(30, 60, 110));
+        JLabel titleLabel = new JLabel("College Club Event Manager");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 15));
+        titlePanel.add(titleLabel);
         cPane.add(titlePanel, BorderLayout.NORTH);
 
-        // Center Form
-        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 10));
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 15));
+        centerPanel.setBackground(new Color(230, 240, 250));
+
+        JPanel grid = new JPanel(new GridLayout(3, 1, 10, 10));
+        grid.setBackground(new Color(230, 240, 250));
+
+        studentBtn = new JButton("Student Portal (Login / Register)");
+        studentBtn.addActionListener(this);
+        grid.add(studentBtn);
+
+        execomBtn = new JButton("Execom Portal (Login / Register)");
+        execomBtn.addActionListener(this);
+        grid.add(execomBtn);
+
+        exitBtn = new JButton("Exit Application");
+        exitBtn.addActionListener(this);
+        grid.add(exitBtn);
+
+        centerPanel.add(grid);
+        cPane.add(centerPanel, BorderLayout.CENTER);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == studentBtn) {
+            new StudentLoginFrame().setVisible(true);
+            dispose();
+        } else if (e.getSource() == execomBtn) {
+            new ExecomLoginFrame().setVisible(true);
+            dispose();
+        } else if (e.getSource() == exitBtn) {
+            System.exit(0);
+        }
+    }
+}
+
+// --- 4.2 STUDENT LOGIN FRAME ---
+class StudentLoginFrame extends JFrame implements ActionListener {
+    private JTextField emailField;
+    private JPasswordField passField;
+    private JButton loginBtn;
+    private JButton registerBtn;
+    private JButton backBtn;
+
+    public StudentLoginFrame() {
+        setTitle("Student Login");
+        setSize(360, 220);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        Container cPane = getContentPane();
+        cPane.setLayout(new BorderLayout(5, 5));
+        cPane.setBackground(new Color(230, 240, 250));
+
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        titlePanel.setBackground(new Color(30, 60, 110));
+        JLabel titleLabel = new JLabel("Student Login Portal");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        titlePanel.add(titleLabel);
+        cPane.add(titlePanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 12));
         centerPanel.setBackground(new Color(230, 240, 250));
 
         JPanel formGrid = new JPanel(new GridLayout(2, 2, 8, 8));
@@ -335,17 +453,20 @@ class LoginFrame extends JFrame implements ActionListener {
         centerPanel.add(formGrid);
         cPane.add(centerPanel, BorderLayout.CENTER);
 
-        // Bottom Buttons
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 8));
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 8));
         btnPanel.setBackground(new Color(210, 230, 250));
 
         loginBtn = new JButton("Login");
         loginBtn.addActionListener(this);
         btnPanel.add(loginBtn);
 
-        exitBtn = new JButton("Exit");
-        exitBtn.addActionListener(this);
-        btnPanel.add(exitBtn);
+        registerBtn = new JButton("Register");
+        registerBtn.addActionListener(this);
+        btnPanel.add(registerBtn);
+
+        backBtn = new JButton("Back");
+        backBtn.addActionListener(this);
+        btnPanel.add(backBtn);
 
         cPane.add(btnPanel, BorderLayout.SOUTH);
     }
@@ -354,8 +475,12 @@ class LoginFrame extends JFrame implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == loginBtn) {
             handleLogin();
-        } else if (e.getSource() == exitBtn) {
-            System.exit(0);
+        } else if (e.getSource() == registerBtn) {
+            new StudentRegisterFrame().setVisible(true);
+            dispose();
+        } else if (e.getSource() == backBtn) {
+            new RoleSelectFrame().setVisible(true);
+            dispose();
         }
     }
 
@@ -363,17 +488,15 @@ class LoginFrame extends JFrame implements ActionListener {
         String email = emailField.getText().trim();
         String pass = new String(passField.getPassword()).trim();
 
+        if (email.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter both email and password.", "Input Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         try {
-            Person p = DBManager.login(email, pass);
-            if (p instanceof Student) {
-                Student s = (Student) p;
-                new StudentFrame(s).setVisible(true);
-                dispose();
-            } else if (p instanceof ExecomMember) {
-                ExecomMember em = (ExecomMember) p;
-                new ExecomFrame(em).setVisible(true);
-                dispose();
-            }
+            Student s = DBManager.loginStudent(email, pass);
+            new StudentFrame(s).setVisible(true);
+            dispose();
         } catch (InvalidLoginException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Login Error", JOptionPane.ERROR_MESSAGE);
         } catch (Exception ex) {
@@ -382,6 +505,332 @@ class LoginFrame extends JFrame implements ActionListener {
     }
 }
 
+// --- 4.3 STUDENT REGISTRATION FRAME ---
+class StudentRegisterFrame extends JFrame implements ActionListener {
+    private JTextField idField;
+    private JTextField nameField;
+    private JTextField emailField;
+    private JPasswordField passField;
+    private JTextField deptField;
+    private JTextField yearField;
+
+    private JButton registerBtn;
+    private JButton cancelBtn;
+
+    public StudentRegisterFrame() {
+        setTitle("Register New Student");
+        setSize(380, 320);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        Container cPane = getContentPane();
+        cPane.setLayout(new BorderLayout(5, 5));
+        cPane.setBackground(new Color(230, 240, 250));
+
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        titlePanel.setBackground(new Color(30, 60, 110));
+        JLabel titleLabel = new JLabel("New Student Registration");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        titlePanel.add(titleLabel);
+        cPane.add(titlePanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 10));
+        centerPanel.setBackground(new Color(230, 240, 250));
+
+        JPanel formGrid = new JPanel(new GridLayout(6, 2, 8, 8));
+        formGrid.setBackground(new Color(230, 240, 250));
+
+        formGrid.add(new JLabel("Student ID:"));
+        idField = new JTextField(10);
+        formGrid.add(idField);
+
+        formGrid.add(new JLabel("Full Name:"));
+        nameField = new JTextField(10);
+        formGrid.add(nameField);
+
+        formGrid.add(new JLabel("Email:"));
+        emailField = new JTextField(10);
+        formGrid.add(emailField);
+
+        formGrid.add(new JLabel("Password:"));
+        passField = new JPasswordField(10);
+        formGrid.add(passField);
+
+        formGrid.add(new JLabel("Department:"));
+        deptField = new JTextField(10);
+        formGrid.add(deptField);
+
+        formGrid.add(new JLabel("Year (1-4):"));
+        yearField = new JTextField(10);
+        formGrid.add(yearField);
+
+        centerPanel.add(formGrid);
+        cPane.add(centerPanel, BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 8));
+        btnPanel.setBackground(new Color(210, 230, 250));
+
+        registerBtn = new JButton("Register");
+        registerBtn.addActionListener(this);
+        btnPanel.add(registerBtn);
+
+        cancelBtn = new JButton("Cancel");
+        cancelBtn.addActionListener(this);
+        btnPanel.add(cancelBtn);
+
+        cPane.add(btnPanel, BorderLayout.SOUTH);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == registerBtn) {
+            handleRegister();
+        } else if (e.getSource() == cancelBtn) {
+            new StudentLoginFrame().setVisible(true);
+            dispose();
+        }
+    }
+
+    private void handleRegister() {
+        String id = idField.getText().trim();
+        String name = nameField.getText().trim();
+        String email = emailField.getText().trim();
+        String pass = new String(passField.getPassword()).trim();
+        String dept = deptField.getText().trim();
+        String yearStr = yearField.getText().trim();
+
+        if (id.isEmpty() || name.isEmpty() || email.isEmpty() || pass.isEmpty() || dept.isEmpty() || yearStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Missing Fields", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int year = 1;
+        try {
+            year = Integer.parseInt(yearStr);
+            if (year < 1 || year > 5) {
+                JOptionPane.showMessageDialog(this, "Year must be a number between 1 and 5.", "Invalid Year", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Year must be a valid integer.", "Invalid Year", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            Student s = new Student(id, name, email, pass, dept, year);
+            DBManager.registerStudent(s);
+            JOptionPane.showMessageDialog(this, "Student registered successfully! Please log in.");
+            new StudentLoginFrame().setVisible(true);
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Registration failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+}
+
+// --- 4.4 EXECOM LOGIN FRAME ---
+class ExecomLoginFrame extends JFrame implements ActionListener {
+    private JTextField emailField;
+    private JPasswordField passField;
+    private JButton loginBtn;
+    private JButton registerBtn;
+    private JButton backBtn;
+
+    public ExecomLoginFrame() {
+        setTitle("Execom Member Login");
+        setSize(360, 220);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        Container cPane = getContentPane();
+        cPane.setLayout(new BorderLayout(5, 5));
+        cPane.setBackground(new Color(230, 240, 250));
+
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        titlePanel.setBackground(new Color(30, 60, 110));
+        JLabel titleLabel = new JLabel("Execom Member Login Portal");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        titlePanel.add(titleLabel);
+        cPane.add(titlePanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 12));
+        centerPanel.setBackground(new Color(230, 240, 250));
+
+        JPanel formGrid = new JPanel(new GridLayout(2, 2, 8, 8));
+        formGrid.setBackground(new Color(230, 240, 250));
+
+        formGrid.add(new JLabel("Email:"));
+        emailField = new JTextField(10);
+        formGrid.add(emailField);
+
+        formGrid.add(new JLabel("Password:"));
+        passField = new JPasswordField(10);
+        formGrid.add(passField);
+
+        centerPanel.add(formGrid);
+        cPane.add(centerPanel, BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 8));
+        btnPanel.setBackground(new Color(210, 230, 250));
+
+        loginBtn = new JButton("Login");
+        loginBtn.addActionListener(this);
+        btnPanel.add(loginBtn);
+
+        registerBtn = new JButton("Register");
+        registerBtn.addActionListener(this);
+        btnPanel.add(registerBtn);
+
+        backBtn = new JButton("Back");
+        backBtn.addActionListener(this);
+        btnPanel.add(backBtn);
+
+        cPane.add(btnPanel, BorderLayout.SOUTH);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == loginBtn) {
+            handleLogin();
+        } else if (e.getSource() == registerBtn) {
+            new ExecomRegisterFrame().setVisible(true);
+            dispose();
+        } else if (e.getSource() == backBtn) {
+            new RoleSelectFrame().setVisible(true);
+            dispose();
+        }
+    }
+
+    private void handleLogin() {
+        String email = emailField.getText().trim();
+        String pass = new String(passField.getPassword()).trim();
+
+        if (email.isEmpty() || pass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter both email and password.", "Input Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            ExecomMember em = DBManager.loginExecom(email, pass);
+            new ExecomFrame(em).setVisible(true);
+            dispose();
+        } catch (InvalidLoginException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Login Error", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "An error occurred: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+}
+
+// --- 4.5 EXECOM REGISTRATION FRAME ---
+class ExecomRegisterFrame extends JFrame implements ActionListener {
+    private JTextField idField;
+    private JTextField nameField;
+    private JTextField emailField;
+    private JPasswordField passField;
+    private JTextField desigField;
+
+    private JButton registerBtn;
+    private JButton cancelBtn;
+
+    public ExecomRegisterFrame() {
+        setTitle("Register New Execom Member");
+        setSize(380, 290);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        Container cPane = getContentPane();
+        cPane.setLayout(new BorderLayout(5, 5));
+        cPane.setBackground(new Color(230, 240, 250));
+
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        titlePanel.setBackground(new Color(30, 60, 110));
+        JLabel titleLabel = new JLabel("New Execom Member Registration");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        titlePanel.add(titleLabel);
+        cPane.add(titlePanel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 10));
+        centerPanel.setBackground(new Color(230, 240, 250));
+
+        JPanel formGrid = new JPanel(new GridLayout(5, 2, 8, 8));
+        formGrid.setBackground(new Color(230, 240, 250));
+
+        formGrid.add(new JLabel("Member ID:"));
+        idField = new JTextField(10);
+        formGrid.add(idField);
+
+        formGrid.add(new JLabel("Full Name:"));
+        nameField = new JTextField(10);
+        formGrid.add(nameField);
+
+        formGrid.add(new JLabel("Email:"));
+        emailField = new JTextField(10);
+        formGrid.add(emailField);
+
+        formGrid.add(new JLabel("Password:"));
+        passField = new JPasswordField(10);
+        formGrid.add(passField);
+
+        formGrid.add(new JLabel("Designation:"));
+        desigField = new JTextField(10);
+        formGrid.add(desigField);
+
+        centerPanel.add(formGrid);
+        cPane.add(centerPanel, BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 8));
+        btnPanel.setBackground(new Color(210, 230, 250));
+
+        registerBtn = new JButton("Register");
+        registerBtn.addActionListener(this);
+        btnPanel.add(registerBtn);
+
+        cancelBtn = new JButton("Cancel");
+        cancelBtn.addActionListener(this);
+        btnPanel.add(cancelBtn);
+
+        cPane.add(btnPanel, BorderLayout.SOUTH);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == registerBtn) {
+            handleRegister();
+        } else if (e.getSource() == cancelBtn) {
+            new ExecomLoginFrame().setVisible(true);
+            dispose();
+        }
+    }
+
+    private void handleRegister() {
+        String id = idField.getText().trim();
+        String name = nameField.getText().trim();
+        String email = emailField.getText().trim();
+        String pass = new String(passField.getPassword()).trim();
+        String desig = desigField.getText().trim();
+
+        if (id.isEmpty() || name.isEmpty() || email.isEmpty() || pass.isEmpty() || desig.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Missing Fields", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            ExecomMember em = new ExecomMember(id, name, email, pass, desig);
+            DBManager.registerExecomMember(em);
+            JOptionPane.showMessageDialog(this, "Execom Member registered successfully! Please log in.");
+            new ExecomLoginFrame().setVisible(true);
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Registration failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+}
+
+// --- 4.6 STUDENT MAIN PORTAL FRAME ---
 class StudentFrame extends JFrame implements ActionListener {
     private Student student;
     private JTable table;
@@ -401,24 +850,24 @@ class StudentFrame extends JFrame implements ActionListener {
 
         Container cPane = getContentPane();
         cPane.setLayout(new BorderLayout(10, 10));
-        cPane.setBackground(new Color(240, 250, 240));
+        cPane.setBackground(new Color(240, 248, 255));
 
-        // Top Header
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        topPanel.setBackground(new Color(220, 240, 220));
-        topPanel.add(new JLabel("Welcome Student: " + student.getName() + " (" + student.getDepartment() + ")"));
+        topPanel.setBackground(new Color(70, 130, 180));
+        JLabel headerLabel = new JLabel("Welcome, " + student.getName() + " (" + student.getDepartment() + ")");
+        headerLabel.setForeground(Color.WHITE);
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        topPanel.add(headerLabel);
         cPane.add(topPanel, BorderLayout.NORTH);
 
-        // Center Table
         String[] cols = new String[]{"Event ID", "Name", "Date", "Venue", "Max Seats", "Seats Left"};
         model = new DefaultTableModel(cols, 0);
         table = new JTable(model);
         loadEvents();
         cPane.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Bottom Buttons
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
-        bottomPanel.setBackground(new Color(220, 240, 220));
+        bottomPanel.setBackground(new Color(220, 235, 245));
 
         registerBtn = new JButton("Register for Event");
         registerBtn.addActionListener(this);
@@ -463,7 +912,7 @@ class StudentFrame extends JFrame implements ActionListener {
                 "Student Information",
                 JOptionPane.INFORMATION_MESSAGE);
         } else if (e.getSource() == logoutBtn) {
-            new LoginFrame().setVisible(true);
+            new RoleSelectFrame().setVisible(true);
             dispose();
         }
     }
@@ -491,6 +940,7 @@ class StudentFrame extends JFrame implements ActionListener {
     }
 }
 
+// --- 4.7 EXECOM MAIN PORTAL FRAME ---
 class ExecomFrame extends JFrame implements ActionListener {
     private ExecomMember member;
     private JTable table;
@@ -505,31 +955,31 @@ class ExecomFrame extends JFrame implements ActionListener {
 
     public ExecomFrame(ExecomMember member) {
         this.member = member;
-        setTitle("Execom Dashboard - " + member.getName());
+        setTitle("Execom Portal - " + member.getName());
         setSize(700, 420);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         Container cPane = getContentPane();
         cPane.setLayout(new BorderLayout(10, 10));
-        cPane.setBackground(new Color(255, 245, 235));
+        cPane.setBackground(new Color(245, 245, 250));
 
-        // Top Header
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        topPanel.setBackground(new Color(255, 235, 215));
-        topPanel.add(new JLabel("Execom Member: " + member.getName() + " (" + member.getDesignation() + ")"));
+        topPanel.setBackground(new Color(60, 90, 150));
+        JLabel headerLabel = new JLabel("Execom Dashboard: " + member.getName() + " (" + member.getDesignation() + ")");
+        headerLabel.setForeground(Color.WHITE);
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        topPanel.add(headerLabel);
         cPane.add(topPanel, BorderLayout.NORTH);
 
-        // Center Table
         String[] cols = new String[]{"Event ID", "Name", "Date", "Venue", "Max Seats", "Seats Left"};
         model = new DefaultTableModel(cols, 0);
         table = new JTable(model);
         loadEvents();
         cPane.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Bottom Buttons
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
-        bottomPanel.setBackground(new Color(255, 235, 215));
+        bottomPanel.setBackground(new Color(230, 230, 240));
 
         addEventBtn = new JButton("Add Event");
         addEventBtn.addActionListener(this);
@@ -586,7 +1036,7 @@ class ExecomFrame extends JFrame implements ActionListener {
                 "Execom Information",
                 JOptionPane.INFORMATION_MESSAGE);
         } else if (e.getSource() == logoutBtn) {
-            new LoginFrame().setVisible(true);
+            new RoleSelectFrame().setVisible(true);
             dispose();
         }
     }
@@ -594,7 +1044,7 @@ class ExecomFrame extends JFrame implements ActionListener {
     private void openParticipants() {
         int row = table.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select an event from the table first.");
+            JOptionPane.showMessageDialog(this, "Please select an event to view participants.");
             return;
         }
         Event selectedEvent = eventList.get(row);
@@ -602,16 +1052,36 @@ class ExecomFrame extends JFrame implements ActionListener {
     }
 
     private void addNewEvent() {
-        String id = "EVT-" + (System.currentTimeMillis() % 1000);
-        String name = JOptionPane.showInputDialog(this, "Enter Event Name:");
-        if (name == null || name.trim().length() == 0) return;
-        String date = JOptionPane.showInputDialog(this, "Enter Date (e.g. 2026-11-20):");
-        String venue = JOptionPane.showInputDialog(this, "Enter Venue:");
-        String seats = JOptionPane.showInputDialog(this, "Enter Max Seats:");
+        JTextField idField = new JTextField(8);
+        JTextField nameField = new JTextField(8);
+        JTextField dateField = new JTextField(8);
+        JTextField venueField = new JTextField(8);
+        JTextField seatsField = new JTextField(8);
+
+        JPanel panel = new JPanel(new GridLayout(5, 2, 5, 5));
+        panel.add(new JLabel("Event ID:"));
+        panel.add(idField);
+        panel.add(new JLabel("Name:"));
+        panel.add(nameField);
+        panel.add(new JLabel("Date:"));
+        panel.add(dateField);
+        panel.add(new JLabel("Venue:"));
+        panel.add(venueField);
+        panel.add(new JLabel("Max Seats:"));
+        panel.add(seatsField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Add New Event", JOptionPane.OK_CANCEL_OPTION);
+        if (result != JOptionPane.OK_OPTION) return;
 
         try {
-            int maxSeats = Integer.parseInt(seats);
-            Event ev = new Event(id, name, date, venue, maxSeats);
+            int seats = Integer.parseInt(seatsField.getText().trim());
+            Event ev = new Event(
+                idField.getText().trim(),
+                nameField.getText().trim(),
+                dateField.getText().trim(),
+                venueField.getText().trim(),
+                seats
+            );
             DBManager.addEvent(ev);
             JOptionPane.showMessageDialog(this, "Event Added Successfully!");
             loadEvents();
@@ -637,6 +1107,7 @@ class ExecomFrame extends JFrame implements ActionListener {
     }
 }
 
+// --- 4.8 PARTICIPANTS FRAME ---
 class ParticipantsFrame extends JFrame implements ActionListener {
     private Event event;
     private JTable table;
@@ -656,20 +1127,17 @@ class ParticipantsFrame extends JFrame implements ActionListener {
         cPane.setLayout(new BorderLayout(10, 10));
         cPane.setBackground(new Color(255, 240, 245));
 
-        // Top Header
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         topPanel.setBackground(new Color(245, 225, 235));
         topPanel.add(new JLabel("Participants for: " + event.getName()));
         cPane.add(topPanel, BorderLayout.NORTH);
 
-        // Center Table
         String[] cols = new String[]{"Reg ID", "Student Name", "Department", "Year", "Attended"};
         model = new DefaultTableModel(cols, 0);
         table = new JTable(model);
         loadParticipants();
         cPane.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Bottom Controls
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         bottomPanel.setBackground(new Color(245, 225, 235));
 
@@ -755,7 +1223,7 @@ public class ClubEventManager {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                new LoginFrame().setVisible(true);
+                new RoleSelectFrame().setVisible(true);
             }
         });
     }
